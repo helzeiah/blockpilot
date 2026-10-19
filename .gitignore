@@ -1,0 +1,17 @@
+# dataset (CC-BY-NC 4.0 — do not commit; see decisions/ and README)
+data/
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# training artifacts
+runs/
+checkpoints/
+*.pt
+*.ckpt
+
+# os
+.DS_Store
