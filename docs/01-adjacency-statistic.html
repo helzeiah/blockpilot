@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockpilot: the adjacency statistic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --deepslate:#16181a; --stone:#20242a; --raised:#2a3037; --line:#343b43;
+  --bone:#e9e6df; --dim:#a29e95; --faint:#6f6b63;
+  --grass:#7fa653; --oak:#c8934e; --redstone:#b75543; --diamond:#58a6b5;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --disp:"Space Grotesk",system-ui,sans-serif;
+  --body:"Source Serif 4",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--deepslate); color:var(--bone);
+  font-family:var(--body); font-size:18px; line-height:1.68;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.col{max-width:68ch}
+
+/* ---------- hero ---------- */
+header.hero{
+  border-bottom:1px solid var(--line);
+  background:
+    linear-gradient(180deg,rgba(127,166,83,.07),transparent 60%),
+    var(--deepslate);
+  padding:72px 0 56px;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--grass); margin:0 0 20px;
+}
+h1{
+  font-family:var(--disp); font-weight:700; font-size:clamp(34px,5.2vw,58px);
+  line-height:1.04; letter-spacing:-.02em; margin:0 0 22px; max-width:24ch;
+}
+.standfirst{font-size:20px;color:var(--dim);margin:0;max-width:56ch}
+.targets{display:flex;gap:40px;flex-wrap:wrap;margin:44px 0 0}
+.target .n{font-family:var(--disp);font-weight:700;font-size:44px;color:var(--oak);line-height:1}
+.target .l{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:8px;max-width:22ch;line-height:1.5}
+
+/* ---------- sections ---------- */
+main{padding:0 0 96px}
+section{padding:64px 0 8px;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.sec-tag{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin:0 0 14px}
+h2{font-family:var(--disp);font-weight:700;font-size:clamp(24px,3.2vw,34px);line-height:1.15;letter-spacing:-.015em;margin:0 0 20px;max-width:30ch}
+h3{font-family:var(--disp);font-weight:500;font-size:20px;margin:40px 0 12px}
+p{margin:0 0 18px}
+strong{font-weight:600;color:#fff}
+code{font-family:var(--mono);font-size:.86em;background:var(--stone);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--oak)}
+a{color:var(--diamond)}
+ul,ol{margin:0 0 18px;padding-left:22px}
+li{margin-bottom:9px}
+
+/* ---------- callouts ---------- */
+.note{border-left:3px solid var(--diamond);background:rgba(88,166,181,.06);padding:16px 20px;margin:26px 0;border-radius:0 6px 6px 0}
+.trap{border-left:3px solid var(--redstone);background:rgba(183,85,67,.07);padding:16px 20px;margin:26px 0;border-radius:0 6px 6px 0}
+.note p:last-child,.trap p:last-child{margin-bottom:0}
+.note .lbl,.trap .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:7px}
+.note .lbl{color:var(--diamond)} .trap .lbl{color:var(--redstone)}
+
+/* ---------- formula ---------- */
+.formula{
+  font-family:var(--mono);font-size:16px;background:var(--stone);
+  border:1px solid var(--line);border-radius:8px;padding:22px 24px;margin:24px 0;
+  overflow-x:auto;color:var(--bone)
+}
+.formula .hl{color:var(--grass)}
+.formula .cmt{color:var(--faint)}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;margin:24px 0;font-size:15px}
+th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:400}
+td.num{font-family:var(--mono);color:var(--oak);white-space:nowrap}
+tr.goal td{color:var(--grass);font-weight:600}
+
+/* ---------- SIGNATURE: window explorer ---------- */
+.explorer{background:var(--stone);border:1px solid var(--line);border-radius:12px;padding:26px;margin:32px 0}
+.modes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.mode{
+  font-family:var(--mono);font-size:12px;letter-spacing:.04em;cursor:pointer;
+  background:var(--raised);color:var(--dim);border:1px solid var(--line);
+  border-radius:6px;padding:9px 13px;transition:background .14s,color .14s,border-color .14s
+}
+.mode:hover{color:var(--bone)}
+.mode[aria-pressed="true"]{background:var(--grass);color:#12160f;border-color:var(--grass);font-weight:700}
+.mode:focus-visible{outline:2px solid var(--diamond);outline-offset:2px}
+
+.exp-body{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start}
+.grid7{display:grid;grid-template-columns:repeat(7,40px);gap:4px}
+.cell{
+  width:40px;height:40px;border-radius:4px;background:#1a1e22;border:1px solid #262c33;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;color:#4a5058;transition:background .12s,color .12s,border-color .12s
+}
+.cell.in{background:rgba(127,166,83,.22);border-color:var(--grass);color:#cfe0b6}
+.cell.center{background:var(--oak);border-color:var(--oak);color:#1b1408;font-weight:700}
+.exp-side{flex:1;min-width:240px}
+.slider-row{margin:20px 0 0}
+.slider-row label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:8px}
+input[type=range]{width:100%;accent-color:var(--grass)}
+.readout{font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--dim)}
+.readout b{color:var(--bone);font-weight:700}
+.readout .big{display:block;font-family:var(--disp);font-size:34px;color:var(--grass);line-height:1.1;margin:4px 0 2px}
+.axis-note{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:10px;letter-spacing:.06em}
+
+/* ---------- action log ---------- */
+.logblock{background:var(--stone);border:1px solid var(--line);border-radius:10px;padding:22px;margin:22px 0}
+.logblock h4{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--grass);margin:0 0 4px;font-weight:400}
+.logblock .sub{font-size:14.5px;color:var(--dim);margin:0 0 18px}
+.chainrow{display:flex;align-items:center;flex-wrap:wrap;gap:0;row-gap:14px}
+.chip{
+  font-family:var(--mono);font-size:11px;padding:7px 9px;border-radius:5px;
+  border:1px solid var(--line);background:var(--raised);white-space:nowrap;line-height:1.35;text-align:center
+}
+.chip .k{display:block;font-weight:700;font-size:12px}
+.chip.P .k{color:var(--grass)} .chip.B .k{color:var(--redstone)}
+.chip .c{color:var(--faint);font-size:10px}
+.chip.skipped{opacity:.34;border-style:dashed;transform:scale(.86)}
+.conn{display:flex;align-items:center;gap:6px;padding:0 6px;color:var(--faint)}
+.conn .rule{width:14px;height:1px;background:var(--line)}
+.conn .d{font-family:var(--mono);font-size:11px;color:var(--oak);border:1px solid var(--line);border-radius:99px;padding:2px 7px;background:var(--deepslate)}
+.conn .d.zero{color:var(--redstone);border-color:var(--redstone)}
+.tally{font-family:var(--mono);font-size:12px;color:var(--dim);margin:16px 0 0}
+.tally b{color:var(--bone)}
+
+/* ---------- checklist ---------- */
+.check{list-style:none;padding:0;margin:22px 0}
+.check li{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);margin:0}
+.check li:last-child{border-bottom:0}
+.check .box{flex:none;width:19px;height:19px;border:1.5px solid var(--grass);border-radius:4px;margin-top:5px}
+.check .t{flex:1}
+.check .t b{display:block;color:#fff;font-weight:600}
+.check .t span{font-size:15.5px;color:var(--dim)}
+
+footer{border-top:1px solid var(--line);padding:36px 0 60px;font-family:var(--mono);font-size:11.5px;color:var(--faint);letter-spacing:.06em}
+
+@media (max-width:640px){
+  body{font-size:17px}
+  .grid7{grid-template-columns:repeat(7,34px)}
+  .cell{width:34px;height:34px;font-size:11px}
+  header.hero{padding:48px 0 40px}
+  section{padding:48px 0 8px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Blockpilot &middot; step 1 of the build</p>
+    <h1>Do people put the next block right next to the last one?</h1>
+    <p class="standfirst">A 2019 paper measured this on 2,517 recorded Minecraft builds and published the answer. Your job is to compute the same numbers from the same files. If you match them, your code reads the data correctly.</p>
+    <div class="targets">
+      <div class="target"><div class="n">67.9%</div><div class="l">of blocks land 1 step from the previous block</div></div>
+      <div class="target"><div class="n">93.7%</div><div class="l">land within 5 steps</div></div>
+      <div class="target"><div class="n">2,517</div><div class="l">recorded builds on your disk</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">01 &middot; the point</p>
+  <h2>Why this is the first thing you build</h2>
+  <p>You have 2,517 folders on disk. Each one holds a list of every action a person took while building something in Minecraft, in the order they took it. Nobody documented the format. You worked most of it out by opening a file and reading it.</p>
+  <p>The risk now is that you <em>think</em> you understand it. A misread field doesn't crash anything. It quietly produces a model that trains, converges, and is wrong, and you find out three weeks later.</p>
+  <p>So before writing a model, you compute numbers that someone else already published. Match them, and your reader is correct. Miss them, and you learn exactly which assumption was wrong, today.</p>
+  <div class="note">
+    <span class="lbl">The word for this</span>
+    <p>Reproducing a published statistic to test your own pipeline is a <strong>sanity check against ground truth</strong>. It costs an afternoon and removes an entire category of silent failure.</p>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">02 &middot; coordinates</p>
+  <h2>Where a block lives</h2>
+  <p>Minecraft is a grid of cubes. Every block sits at a whole-number position written as three values:</p>
+  <div class="formula">(x, y, z)  <span class="cmt">&larr; x and z run flat along the ground, y is height</span></div>
+  <p>Two details that matter:</p>
+  <ul>
+    <li><strong>y is up.</strong> In most 3D graphics work z is up. Here it isn't. Getting this backwards silently turns every building on its side.</li>
+    <li><strong>Numbers can be negative.</strong> These are world coordinates, not offsets from a corner. A real row from your data reads <code>[-9, 72, 5]</code>.</li>
+  </ul>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">03 &middot; distance</p>
+  <h2>Two ways to measure how far apart two blocks are</h2>
+  <p>The claim you're testing is "the next block goes right next to the last one." To test it you need to turn "next to" into a number. There are two reasonable ways, and they disagree.</p>
+
+  <h3>Way one: straight-line distance</h3>
+  <p>The distance you'd measure with a ruler. Also called <strong>Euclidean distance</strong>.</p>
+  <div class="formula">d = &radic;( dx&sup2; + dy&sup2; + dz&sup2; )</div>
+
+  <h3>Way two: step distance</h3>
+  <p>How many single moves it takes to walk from one cube to the other, where a move goes through one face of a cube. Add up the three gaps and don't square anything. Also called <strong>Manhattan distance</strong>, or <strong>L1</strong>, because it's how far you walk on a street grid.</p>
+  <div class="formula">d = |dx| + |dy| + |dz|      <span class="cmt">| | means "throw away the minus sign"</span></div>
+
+  <h3>A worked example, using real rows from your data</h3>
+  <div class="formula">block A = (-9, 72, 4)
+block B = (-9, 73, 2)
+
+dx = -9 &minus; -9  =  0   &rarr; |0| = 0
+dy =  72 &minus; 73  = -1   &rarr; |-1| = 1
+dz =   4 &minus;  2  =  2   &rarr; |2| = 2
+
+<span class="hl">L1 distance = 0 + 1 + 2 = 3</span>      <span class="cmt">three steps apart</span>
+Euclidean   = &radic;(0+1+4) &asymp; 2.24  <span class="cmt">a number with no obvious meaning here</span></div>
+
+  <h3>Why the paper uses L1</h3>
+  <p>Because on a grid of cubes, <strong>L1 = 1 means the two blocks touch face to face.</strong> There are exactly six such positions: one up, one down, and four sideways. That's precisely the situation you care about, and L1 is the only measure that isolates it.</p>
+  <p>Straight-line distance blurs it. A block placed diagonally across an edge is 1.41 away, and across a corner 1.73. Those are all "about 1," so "distance 1" stops meaning anything specific.</p>
+
+  <div class="note">
+    <span class="lbl">Sanity check on the diagonals</span>
+    <p>Under L1, an edge diagonal is <strong>2</strong> (one sideways step, one up) and a corner diagonal is <strong>3</strong>. Nothing is 1 except the six face neighbours. That crispness is the whole reason to use it.</p>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap">
+  <div class="col">
+    <p class="sec-tag">04 &middot; the third measure</p>
+    <h2>A third measure shows up later, and it is not the same shape</h2>
+    <p>The 2019 model doesn't guess anywhere in the world. It only guesses inside a small box around your last block: 7 wide, 7 tall, 7 deep, which is 343 possible spots.</p>
+    <p>That box is defined by a <em>different</em> distance: take the biggest of the three gaps and ignore the other two. It's called <strong>L&infin;</strong>, and "the box" is every cell where L&infin; is 3 or less.</p>
+    <div class="formula">L&infin; = the largest of ( |dx| , |dy| , |dz| )</div>
+    <p>So the paper reports its histogram in L1 but sizes its model in L&infin;. Two measures, two shapes. Play with the grid below until the difference is obvious, because conflating them is a real bug waiting to happen.</p>
+  </div>
+
+  <div class="explorer">
+    <div class="modes" role="group" aria-label="Which cells to highlight">
+      <button class="mode" data-mode="face" aria-pressed="true">Touching faces &nbsp;L1 = 1</button>
+      <button class="mode" data-mode="l1" aria-pressed="false">Within 5 steps &nbsp;L1 &le; 5</button>
+      <button class="mode" data-mode="linf" aria-pressed="false">The model's box &nbsp;L&infin; &le; 3</button>
+    </div>
+
+    <div class="exp-body">
+      <div>
+        <div class="grid7" id="grid" role="img" aria-label="A 7 by 7 slice of the neighbourhood around the last placed block"></div>
+        <p class="axis-note">&larr; x &rarr; horizontal &nbsp;&nbsp;&middot;&nbsp;&nbsp; &uarr; z &darr; vertical &nbsp;&nbsp;&middot;&nbsp;&nbsp; orange cell = your last block</p>
+        <div class="slider-row">
+          <label for="ylayer">Height slice &nbsp; y = <span id="ylabel">0</span></label>
+          <input type="range" id="ylayer" min="-3" max="3" value="0" step="1">
+        </div>
+      </div>
+
+      <div class="exp-side">
+        <div class="readout" id="readout"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="trap">
+      <span class="lbl">The trap</span>
+      <p>"Within 5 steps" and "inside the 7&sup3; box" are not the same set of cells, and neither one contains the other. Switch between the last two modes at <code>y = 0</code> and watch the corners turn off while the far edges stay on.</p>
+    </div>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">05 &middot; the hard part</p>
+  <h2>What "consecutive" means, which nobody wrote down</h2>
+  <p>To measure the distance between one block and "the previous block," you need to know which block counts as previous. That sounds obvious. It isn't, because the recording contains two kinds of action.</p>
+  <p>Every line in the file looks like this:</p>
+  <div class="formula">[tick, player, [x,y,z], [block_id, meta], "P" or "B"]
+   <span class="cmt">P = placed a block   B = broke a block</span></div>
+  <p>People don't only build. They clear the ground, cut a window into a finished wall, and change their minds. In the house you opened there were <strong>939 placements and 530 breaks</strong>. Over a third of the actions destroy something.</p>
+  <p>So "the previous block" has at least three defensible meanings. Here is a real 8-action stretch from your data, measured three ways.</p>
+ </div>
+
+ <div class="wrap">
+  <div class="logblock">
+    <h4>Definition A &mdash; every action counts</h4>
+    <p class="sub">Take the file line by line. The previous action is whatever came before, place or break.</p>
+    <div class="chainrow" id="chain-a"></div>
+    <p class="tally" id="tally-a"></p>
+  </div>
+
+  <div class="logblock">
+    <h4>Definition B &mdash; placements only</h4>
+    <p class="sub">Skip every break. The previous block is the last block actually placed.</p>
+    <div class="chainrow" id="chain-b"></div>
+    <p class="tally" id="tally-b"></p>
+  </div>
+
+  <div class="logblock">
+    <h4>Definition C &mdash; placements that survived</h4>
+    <p class="sub">For each position, keep only the last thing that happened there. If a block was placed and later broken, it was never part of the finished build, so drop it.</p>
+    <div class="chainrow" id="chain-c"></div>
+    <p class="tally" id="tally-c"></p>
+  </div>
+ </div>
+
+ <div class="wrap col">
+  <p>Same eight rows, three different answers. Notice what Definition A produces that the others don't: a distance of <strong>0</strong>, because a block was placed and then broken at the identical spot. A zero would pollute your histogram with a "distance" that isn't a move at all.</p>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">06 &middot; cleaning</p>
+  <h2>The paper cleans the data first, and every step pushes the number up</h2>
+  <p>The paper states that all of its statistics come from cleaned data, and lists three cleaning steps. Understanding <em>why</em> each one exists tells you which direction it moves your answer.</p>
+  <table>
+    <thead><tr><th>Step</th><th>Why it exists</th><th>Effect on locality</th></tr></thead>
+    <tbody>
+      <tr><td>Keep only the last action at each position</td><td>People place, break, and replace the same spot. Only the final state is part of the build.</td><td class="num">&uarr; raises</td></tr>
+      <tr><td>Drop caves and underground shelters</td><td>Those builds are mostly <em>breaking</em> into a hillside. The few placements are scattered and unrepresentative.</td><td class="num">&uarr; raises</td></tr>
+      <tr><td>Keep only the largest connected structure</td><td>People drop stray blocks far from the build. Each stray adds one enormous jump.</td><td class="num">&uarr; raises</td></tr>
+    </tbody>
+  </table>
+  <p>This gives you a prediction to test. If your uncleaned number comes out <em>below</em> 67.9%, that's expected, and the gap tells you how much of the published figure is cleaning rather than human behaviour. If your uncleaned number comes out <em>above</em> it, something is wrong with your code, because cleaning can only push it higher.</p>
+  <div class="note">
+    <span class="lbl">Why that matters</span>
+    <p>You now have a result you can interpret either way. That's what a good check looks like: it can't come back "inconclusive."</p>
+  </div>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">07 &middot; method</p>
+  <h2>Don't pick a definition. Let the published number pick it.</h2>
+  <p>You can't ask the authors which definition they used, and their code doesn't spell it out. So don't guess and hope.</p>
+  <p>Compute the statistic under <em>all three</em> definitions and see which one lands on 67.9%. The published number becomes a test you run against your own choices.</p>
+  <table>
+    <thead><tr><th>Definition</th><th>L1 = 1</th><th>L1 &le; 5</th><th>Pairs</th></tr></thead>
+    <tbody>
+      <tr><td>A &mdash; every action</td><td class="num">?</td><td class="num">?</td><td class="num">?</td></tr>
+      <tr><td>B &mdash; placements only</td><td class="num">?</td><td class="num">?</td><td class="num">?</td></tr>
+      <tr><td>C &mdash; placements that survived</td><td class="num">?</td><td class="num">?</td><td class="num">?</td></tr>
+      <tr class="goal"><td>Target from the paper</td><td class="num">67.9%</td><td class="num">93.7%</td><td class="num">&mdash;</td></tr>
+    </tbody>
+  </table>
+  <p>Whichever row matches is the definition the paper used, and from then on it's the definition your project uses too. That decision gets written down as decision 002.</p>
+ </div>
+</section>
+
+<section>
+ <div class="wrap col">
+  <p class="sec-tag">08 &middot; build it</p>
+  <h2>What the script has to do</h2>
+  <ol>
+    <li>Walk every folder under <code>data/houses/</code> and load its <code>placed.json</code>.</li>
+    <li>For each of the three definitions, build the list of positions in order.</li>
+    <li>For each neighbouring pair in that list, compute the L1 distance.</li>
+    <li>Report what fraction of pairs are exactly 1, and what fraction are 5 or less.</li>
+  </ol>
+  <p>Roughly 1.5 million placements total. Plain Python and the <code>json</code> module handle it in seconds. You need no PyTorch and no NumPy for this.</p>
+
+  <h3>Five things that will bite you</h3>
+  <ul class="check">
+    <li><span class="box"></span><span class="t"><b>Never pair across two builds</b><span>Reset at every house. The distance between the last block of one build and the first block of the next is meaningless and will drag your average toward nonsense.</span></span></li>
+    <li><span class="box"></span><span class="t"><b>A build with n placements gives n&minus;1 pairs</b><span>The first block has nothing before it. Your denominator is the number of pairs, not the number of blocks.</span></span></li>
+    <li><span class="box"></span><span class="t"><b>Normalise block ids with <code>&amp; 0xFF</code></b><span>The file stores ids as signed bytes, so id 191 appears as &minus;65. You don't need ids for the distance figure, but you do for the block-type figures, and getting it wrong splits one material into two.</span></span></li>
+    <li><span class="box"></span><span class="t"><b>Block id 0 means air</b><span>Check whether any <code>P</code> action places air. Verify it rather than assuming it.</span></span></li>
+    <li><span class="box"></span><span class="t"><b>2,517 folders have <code>placed.json</code>, but 2,537 have a schematic</b><span>The counts disagree. Decide what makes a build usable and state it, or your totals won't reproduce anyone's.</span></span></li>
+  </ul>
+
+  <div class="trap">
+    <span class="lbl">Before you write code</span>
+    <p>Write decision 002 first: <em>how do you define a step, and how will you settle it?</em> The answer is "empirically, against the published 67.9%" &mdash; which is itself a choice worth recording.</p>
+  </div>
+ </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    Blockpilot &middot; internal learning note &middot; targets from Chen et al., <em>Order-Aware Generative Modeling Using the 3D-Craft Dataset</em>, ICCV 2019 &middot; example rows are real, from <code>workdir.2018-06-09-18:05:52</code>, actions 314&ndash;321
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- window explorer ---------------- */
+  var R = 3, mode = "face", y = 0;
+  var grid = document.getElementById("grid");
+  var readout = document.getElementById("readout");
+  var ylabel = document.getElementById("ylabel");
+  var slider = document.getElementById("ylayer");
+  var buttons = Array.prototype.slice.call(document.querySelectorAll(".mode"));
+
+  function l1(a,b,c){ return Math.abs(a)+Math.abs(b)+Math.abs(c); }
+  function linf(a,b,c){ return Math.max(Math.abs(a),Math.abs(b),Math.abs(c)); }
+  function included(dx,dy,dz){
+    if (mode === "face") return l1(dx,dy,dz) === 1;
+    if (mode === "l1")   return l1(dx,dy,dz) <= 5;
+    return linf(dx,dy,dz) <= R;
+  }
+
+  /* counts over the whole 7x7x7 box */
+  function boxCount(){
+    var n=0;
+    for(var a=-R;a<=R;a++)for(var b=-R;b<=R;b++)for(var c=-R;c<=R;c++) if(included(a,b,c)) n++;
+    return n;
+  }
+  /* how many L1<=5 cells exist anywhere, box or not */
+  function l1TotalAnywhere(){
+    var n=0;
+    for(var a=-5;a<=5;a++)for(var b=-5;b<=5;b++)for(var c=-5;c<=5;c++) if(l1(a,b,c)<=5) n++;
+    return n;
+  }
+  var L1_ALL = l1TotalAnywhere();
+
+  function draw(){
+    grid.innerHTML = "";
+    for(var dz=-R; dz<=R; dz++){
+      for(var dx=-R; dx<=R; dx++){
+        var d = l1(dx,y,dz);
+        var el = document.createElement("div");
+        el.className = "cell";
+        if(dx===0 && y===0 && dz===0){ el.classList.add("center"); el.textContent = "0"; }
+        else { el.textContent = String(d); if(included(dx,y,dz)) el.classList.add("in"); }
+        grid.appendChild(el);
+      }
+    }
+    ylabel.textContent = (y>0?"+":"") + y;
+
+    var inBox = boxCount();
+    var lines;
+    if(mode === "face"){
+      lines =
+        '<span class="big">6</span><b>cells touch a face</b><br>'+
+        'One up, one down, four sideways. Out of 343 cells in the box, only these six are 1 step away.<br><br>'+
+        '<b>67.9%</b> of real placements land on one of these six.';
+    } else if(mode === "l1"){
+      lines =
+        '<span class="big">'+inBox+'</span><b>of 343 cells in the box are within 5 steps</b><br><br>'+
+        'But <b>'+L1_ALL+'</b> cells in total are within 5 steps &mdash; so <b>'+(L1_ALL-inBox)+'</b> of them sit <em>outside</em> the box entirely.<br><br>'+
+        'This is the shape difference. "Within 5 steps" is a diamond. The box is a cube.';
+    } else {
+      lines =
+        '<span class="big">343</span><b>cells in the model\'s box</b><br>'+
+        '7 &times; 7 &times; 7. Every cell here is a spot the 2019 model is allowed to guess.<br><br>'+
+        'The far corner is 3+3+3 = <b>9</b> steps away, well past 5. Notice the corner cells are lit here but dark in the previous mode.';
+    }
+    readout.innerHTML = lines;
+  }
+
+  buttons.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      mode = btn.getAttribute("data-mode");
+      buttons.forEach(function(b){ b.setAttribute("aria-pressed", String(b===btn)); });
+      draw();
+    });
+  });
+  slider.addEventListener("input", function(){ y = parseInt(slider.value,10); draw(); });
+  draw();
+
+  /* ---------------- action-log chains ---------------- */
+  /* real rows: workdir.2018-06-09-18:05:52, actions 314-321 */
+  var LOG = [
+    {t:22434, p:[-7,72,6], k:"P"},
+    {t:22476, p:[-9,72,5], k:"P"},
+    {t:22508, p:[-9,72,6], k:"P"},
+    {t:22614, p:[-9,72,4], k:"P"},
+    {t:22628, p:[-9,72,3], k:"B"},
+    {t:22735, p:[-9,73,2], k:"P"},
+    {t:22768, p:[-9,73,1], k:"P"},
+    {t:22830, p:[-9,73,1], k:"B"}
+  ];
+  function dist(a,b){ return Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]); }
+  function key(p){ return p.join(","); }
+
+  function chipEl(row, skipped){
+    var d = document.createElement("div");
+    d.className = "chip " + row.k + (skipped ? " skipped" : "");
+    d.innerHTML = '<span class="k">'+row.k+'</span><span class="c">'+row.p.join(", ")+'</span>';
+    return d;
+  }
+
+  /* keptFlags[i] = does action i participate in this definition's chain */
+  function render(hostId, tallyId, keptFlags){
+    var host = document.getElementById(hostId);
+    host.innerHTML = "";
+    var kept = [], i;
+    for(i=0;i<LOG.length;i++) if(keptFlags[i]) kept.push(i);
+
+    var dists = [];
+    for(i=0;i<kept.length;i++){
+      host.appendChild(chipEl(LOG[kept[i]], false));
+      if(i < kept.length-1){
+        var a = kept[i], b = kept[i+1];
+        var d = dist(LOG[a].p, LOG[b].p);
+        dists.push(d);
+        var conn = document.createElement("div");
+        conn.className = "conn";
+        conn.appendChild(Object.assign(document.createElement("span"),{className:"rule"}));
+        for(var s=a+1; s<b; s++) conn.appendChild(chipEl(LOG[s], true));
+        var badge = document.createElement("span");
+        badge.className = "d" + (d===0 ? " zero" : "");
+        badge.textContent = d;
+        conn.appendChild(badge);
+        conn.appendChild(Object.assign(document.createElement("span"),{className:"rule"}));
+        host.appendChild(conn);
+      }
+    }
+    /* trailing skipped actions after the final kept one */
+    var last = kept[kept.length-1];
+    if(last < LOG.length-1){
+      var tail = document.createElement("div");
+      tail.className = "conn";
+      for(var q=last+1;q<LOG.length;q++) tail.appendChild(chipEl(LOG[q], true));
+      host.appendChild(tail);
+    }
+
+    var ones = dists.filter(function(d){return d===1;}).length;
+    var zeros = dists.filter(function(d){return d===0;}).length;
+    document.getElementById(tallyId).innerHTML =
+      '<b>'+kept.length+'</b> blocks in the chain &rarr; <b>'+dists.length+'</b> pairs &nbsp;&middot;&nbsp; '+
+      'distances [' + dists.join(", ") + '] &nbsp;&middot;&nbsp; ' +
+      '<b>'+ones+'</b> at distance 1' + (zeros ? ' &nbsp;&middot;&nbsp; <b>'+zeros+'</b> at distance 0' : '');
+  }
+
+  /* A: everything */
+  render("chain-a","tally-a", LOG.map(function(){return true;}));
+  /* B: placements only */
+  render("chain-b","tally-b", LOG.map(function(r){return r.k==="P";}));
+  /* C: last action per position wins, then placements only */
+  var lastAt = {};
+  LOG.forEach(function(r,i){ lastAt[key(r.p)] = i; });
+  render("chain-c","tally-c", LOG.map(function(r,i){ return r.k==="P" && lastAt[key(r.p)]===i; }));
+})();
+</script>
+</body>
+</html>
